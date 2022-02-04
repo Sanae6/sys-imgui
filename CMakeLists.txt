@@ -28,7 +28,7 @@ set_target_properties(sys_imgui PROPERTIES
         CONFIG_JSON "${CMAKE_CURRENT_LIST_DIR}/sys-imgui.json")
 
 # Then, we link the required libraries (libnx) against the executable.
-target_include_directories(sys_imgui PRIVATE bindingGen/cimgui)
+target_include_directories(sys_imgui PRIVATE cimgui)
 target_link_libraries(sys_imgui switch::libnx cimgui)
 
 

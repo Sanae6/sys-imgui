@@ -28,7 +28,7 @@ struct ImguiService {
 private:
     Handle serviceHandle;
     SmServiceName name;
-    Service service
+    Service service;
 };
 
 
