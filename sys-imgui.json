@@ -1,8 +1,8 @@
 {
-  "name": "sysmodule",
-  "title_id": "0x0102100420000123",
-  "title_id_range_min": "0x0100000000000123",
-  "title_id_range_max": "0x0100000000000123",
+  "name": "sys-imgui",
+  "title_id": "0x4202100000021123",
+  "title_id_range_min": "0x4202100000021123",
+  "title_id_range_max": "0x4202100000021123",
   "main_thread_stack_size": "0x00004000",
   "main_thread_priority": 44,
   "default_cpu_id": 3,
@@ -11,6 +11,8 @@
   "pool_partition": 2,
   "is_64_bit": true,
   "address_space_type": 1,
+  "system_resource_size": 0,
+  "disable_device_address_space_merge": false,
   "filesystem_access": {
     "permissions": "0xffffffffffffffff"
   },

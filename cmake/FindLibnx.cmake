@@ -36,8 +36,12 @@ find_library(LIBNX_LIBRARY NAMES libnx.a
         PATHS ${LIBNX_PATHS}
         PATH_SUFFIXES lib)
 
+find_library(DEKO3D_LIBRARY NAMES libdeko3dd.a
+        PATHS ${LIBNX_PATHS}
+        PATH_SUFFIXES lib)
+
 set(LIBNX_INCLUDE_DIRS ${LIBNX_INCLUDE_DIR})
-set(LIBNX_LIBRARIES ${LIBNX_LIBRARY})
+set(LIBNX_LIBRARIES ${LIBNX_LIBRARY} ${DEKO3D_LIBRARY})
 
 find_package_handle_standard_args(LIBNX DEFAULT_MSG
         LIBNX_INCLUDE_DIR LIBNX_LIBRARY)
@@ -48,7 +52,12 @@ if(LIBNX_FOUND)
     set(LIBNX ${LIBNX_INCLUDE_DIR}/..)
 
     add_library(switch::libnx STATIC IMPORTED GLOBAL)
+    add_library(switch::deko3d STATIC IMPORTED GLOBAL)
     set_target_properties(switch::libnx PROPERTIES
             IMPORTED_LOCATION "${LIBNX_LIBRARY}"
             INTERFACE_INCLUDE_DIRECTORIES "${LIBNX_INCLUDE_DIR}")
+    set_target_properties(switch::deko3d PROPERTIES
+            IMPORTED_LOCATION "${DEKO3D_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${LIBNX_INCLUDE_DIR}")
+    target_link_libraries(switch::deko3d INTERFACE switch::libnx)
 endif()

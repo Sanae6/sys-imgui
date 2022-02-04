@@ -45,6 +45,9 @@ find_tool(build_romfs)
 ## bin2s
 find_tool(bin2s)
 
+## uam
+find_tool(uam)
+
 ## A macro to set the title of the application.
 ## if `title` is empty, the title will be set
 ## to the value of `CMAKE_PROJECT_NAME`.
@@ -401,4 +404,14 @@ function(add_kip_target target)
     # Add the respective KIP target and set the required linker flags for the original target.
     add_custom_target(${target_we}_kip ALL SOURCES ${CMAKE_CURRENT_BINARY_DIR}/${target_we}.kip)
     set_target_properties(${target} PROPERTIES LINK_FLAGS "-specs=${LIBNX}/switch.specs")
+endfunction()
+
+function(add_shader_rule target file stage)
+    get_filename_component(file_we ${file} NAME_WE)
+    add_custom_command(
+            TARGET ${target}
+            BYPRODUCTS romfs/shaders/${file_we}.dksh
+            COMMAND ${uam} ARGS ${file} --stage=${stage} --out=romfs/shaders/${file_we}.dksh
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 endfunction()

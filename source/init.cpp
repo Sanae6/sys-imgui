@@ -50,9 +50,9 @@ void __appInit(void) {
     }
 
     // Enable this if you want to use HID.
-    /*rc = hidInitialize();
+    rc = hidInitialize();
     if (R_FAILED(rc))
-        diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_HID));*/
+        diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_HID));
 
     // Enable this if you want to use time.
     /*rc = timeInitialize();
@@ -66,7 +66,13 @@ void __appInit(void) {
         diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_FS));
 
     // Disable this if you don't want to use the SD card filesystem.
-    fsdevMountSdmc();
+    rc = fsdevMountSdmc();
+    if (R_FAILED(rc))
+        diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_FS));
+
+    rc = romfsInit();
+    if (R_FAILED(rc))
+        diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_FS));
 
 
     rc = viInitialize(ViServiceType_Application);
@@ -79,6 +85,7 @@ void __appInit(void) {
 void __appExit(void) {
     // Close extra services you added to __appInit here.
     viExit();
+    romfsExit();
     fsdevUnmountAll(); // Disable this if you don't want to use the SD card filesystem.
     fsExit(); // Disable this if you don't want to use the filesystem.
     smExit();
@@ -90,34 +97,30 @@ void __appExit(void) {
 }
 #endif
 
-#include "ImguiService.hpp"
-#include <deko3d.hpp>
-
-void actualMain(ImguiService service, NWindow* window, dk::Device device);
+#include "main.hpp"
 
 // Main program entrypoint
 int main(int argc, char* argv[]) {
-    bool errored;
-    dk::Device device = dk::DeviceMaker{}
-            .setFlags(DkDeviceFlags_OriginLowerLeft)
-            .create();
+    Result rc;
     ImguiService service = ImguiService();
 
     NWindow* window = (NWindow*) calloc(1, sizeof(NWindow)); // needs to be on the heap because it's being passed to actualMain
     ViDisplay display = {0}; // can be on the stack since i don't care or need to worry about it
     ViLayer layer = {0}; // same as display
-    viOpenDisplay("SysImGui-Display", &display);
-    viCreateLayer(&display, &layer);
-    if (R_FAILED(nwindowCreateFromLayer(window, &layer))) {
-        return 1;
-    }
+    if (R_SUCCEEDED(rc)) rc = viOpenDisplay("SysImGui-Display", &display);
+    if (R_SUCCEEDED(rc)) rc = viCreateLayer(&display, &layer);
+    if (R_FAILED(rc)) rc = nwindowCreateFromLayer(window, &layer);
 
-    actualMain(service, window, device);
+    if (R_SUCCEEDED(rc)) {
+        App* app = new App(service, window);
+
+        app->run();
+        delete app;
+    }
 
     nwindowClose(window);
     viCloseLayer(&layer);
     smUnregisterService(service.getName());
     svcCloseHandle(service.getHandle());
-    device.destroy();
-    return 0;
+    return rc != 0;
 }

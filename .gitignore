@@ -1,2 +1,3 @@
 /cmake-build-*
 .idea/
+romfs/shaders/*.dksh
