@@ -5,6 +5,8 @@
 
 // Include the main libnx system header, for Switch development
 #include <switch.h>
+#include "logger.hpp"
+#include "App.hpp"
 
 // Size of the inner heap (adjust as necessary).
 #define INNER_HEAP_SIZE 0x80000
@@ -30,14 +32,21 @@ void __libnx_initheap(void) {
     fake_heap_end = inner_heap + sizeof(inner_heap);
 }
 
+static dk::Device device;
+static NWindow window;
+static ViDisplay display;
+static ViLayer layer;
+
 // Service initialization.
 void __appInit(void) {
     Result rc;
 
     // Open a service manager session.
     rc = smInitialize();
-    if (R_FAILED(rc))
-        diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_SM));
+    if (R_FAILED(rc)) {
+        abortWithResult(0x4200);
+        return;
+    }
 
     // Retrieve the current version of Horizon OS.
     rc = setsysInitialize();
@@ -51,76 +60,136 @@ void __appInit(void) {
 
     // Enable this if you want to use HID.
     rc = hidInitialize();
-    if (R_FAILED(rc))
-        diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_HID));
+    if (R_FAILED(rc)) {
+        abortWithResult(0x4201);
+        return;
+    }
+
+    static const SocketInitConfig socketInitConfig = {
+            .bsdsockets_version = 1,
+
+            .tcp_tx_buf_size = 0x800,
+            .tcp_rx_buf_size = 0x800,
+            .tcp_tx_buf_max_size = 0x25000,
+            .tcp_rx_buf_max_size = 0x25000,
+
+            //We don't use UDP, set all UDP buffers to 0
+            .udp_tx_buf_size = 0,
+            .udp_rx_buf_size = 0,
+
+            .sb_efficiency = 1,
+    };
+    rc = socketInitialize(&socketInitConfig);
+    if (R_FAILED(rc)) {
+        abortWithResult(0x4202);
+        return;
+    }
+    redirectStdoutToLogServer();
+    log("Connected early\n");
 
     // Enable this if you want to use time.
     /*rc = timeInitialize();
     if (R_FAILED(rc))
-        diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_Time));
+        abortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_Time));
     __libnx_init_time();*/
 
     // Disable this if you don't want to use the filesystem.
     rc = fsInitialize();
-    if (R_FAILED(rc))
-        diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_FS));
+    if (R_FAILED(rc)) {
+        abortWithResult(0x4203);
+        return;
+    }
 
     // Disable this if you don't want to use the SD card filesystem.
     rc = fsdevMountSdmc();
-    if (R_FAILED(rc))
-        diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_FS));
+    if (R_FAILED(rc)) {
+        abortWithResult(0x4204);
+        return;
+    }
 
-    rc = romfsInit();
-    if (R_FAILED(rc))
-        diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_FS));
 
+    log("got to the good shit now\n");
+    log("\n");
 
     rc = viInitialize(ViServiceType_Application);
-    if (R_FAILED(rc))
-        diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_BadGfxInit));
+    u32 outRes = -1;
 
+    if (R_SUCCEEDED(rc)) {
+        log("a\n");
+        rc = viOpenDefaultDisplay(&display);
+        if (R_SUCCEEDED(rc)) {
+            log("b\n");
+            rc = viCreateLayer(&display, &layer);
+            if (R_SUCCEEDED(rc)) {
+                log("c\n");
+                rc = viSetLayerScalingMode(&layer, ViScalingMode_FitToLayer);
+                if (R_SUCCEEDED(rc)) {
+                    log("d\n");
+                    rc = nwindowCreateFromLayer(&window, &layer);
+                    if (R_SUCCEEDED(rc)) {
+                        log("e\n");
+                        rc = nwindowSetDimensions(&window, FB_WIDTH, FB_HEIGHT);
+                        if (R_FAILED(rc))
+                            outRes = 0x420A;
+                        else log("f-\n");
+                    } else outRes = 0x4209;
+                    if (R_FAILED(rc)) {
+                        nwindowClose(&window);
+                    }
+                } else outRes = 0x4208;
+                if (R_FAILED(rc))
+                    viCloseLayer(&layer);
+            } else outRes = 0x4207;
+            if (R_FAILED(rc))
+                viCloseDisplay(&display);
+        } else outRes = 0x4206;
+        if (R_FAILED(rc))
+            viExit();
+    } else
+        outRes = 0x4205;
+    if (R_FAILED(rc))
+        diagAbortWithResult(outRes);
+    log("too sexy\n");
+
+
+    device = dk::DeviceMaker{}
+            .setFlags(DkDeviceFlags_OriginLowerLeft)
+            .create();
+    log("created device\n");
 }
 
 // Service deinitialization.
 void __appExit(void) {
     // Close extra services you added to __appInit here.
+    nwindowClose(&window);
+    viCloseLayer(&layer);
+    viCloseDisplay(&display);
     viExit();
     romfsExit();
     fsdevUnmountAll(); // Disable this if you don't want to use the SD card filesystem.
     fsExit(); // Disable this if you don't want to use the filesystem.
     smExit();
-    //timeExit(); // Enable this if you want to use time.
-    //hidExit(); // Enable this if you want to use HID.
+    socketExit();
+    hidExit(); // Enable this if you want to use HID.
 }
 
 #ifdef __cplusplus
 }
 #endif
 
-#include "main.hpp"
-
 // Main program entrypoint
 int main(int argc, char* argv[]) {
-    Result rc;
+    log("hit main\n");
     ImguiService service = ImguiService();
+    log("made imgui service\n");
 
-    NWindow* window = (NWindow*) calloc(1, sizeof(NWindow)); // needs to be on the heap because it's being passed to actualMain
-    ViDisplay display = {0}; // can be on the stack since i don't care or need to worry about it
-    ViLayer layer = {0}; // same as display
-    if (R_SUCCEEDED(rc)) rc = viOpenDisplay("SysImGui-Display", &display);
-    if (R_SUCCEEDED(rc)) rc = viCreateLayer(&display, &layer);
-    if (R_FAILED(rc)) rc = nwindowCreateFromLayer(window, &layer);
+    App* app = new App(service, &window, device);
+    log("initialized app\n");
 
-    if (R_SUCCEEDED(rc)) {
-        App* app = new App(service, window);
+//    while (true) app->run();
+    delete app;
 
-        app->run();
-        delete app;
-    }
-
-    nwindowClose(window);
-    viCloseLayer(&layer);
     smUnregisterService(service.getName());
     svcCloseHandle(service.getHandle());
-    return rc != 0;
+    return 0;
 }

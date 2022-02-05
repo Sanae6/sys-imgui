@@ -356,18 +356,18 @@ function(add_nsp_target target)
 
     # Build the NSP file.
     add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target_we}.nsp
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/exefs.nsp
         PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/exefs
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${target_we}.nso ${CMAKE_CURRENT_BINARY_DIR}/exefs/main
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${target_we}.npdm ${CMAKE_CURRENT_BINARY_DIR}/exefs/main.npdm
-        COMMAND ${build_pfs0} ${CMAKE_CURRENT_BINARY_DIR}/exefs ${CMAKE_CURRENT_BINARY_DIR}/${target_we}.nsp
+        COMMAND ${build_pfs0} ${CMAKE_CURRENT_BINARY_DIR}/exefs ${CMAKE_CURRENT_BINARY_DIR}/exefs.nsp
         DEPENDS ${target} ${CMAKE_CURRENT_BINARY_DIR}/${target_we}.nso ${CMAKE_CURRENT_BINARY_DIR}/${target_we}.npdm
         VERBATIM
     )
 
     # Add the respective NSP target and set the required linker flags for the original target.
-    add_custom_target(${target_we}_nsp ALL SOURCES ${CMAKE_CURRENT_BINARY_DIR}/${target_we}.nsp)
+    add_custom_target(${target_we}_nsp ALL SOURCES ${CMAKE_CURRENT_BINARY_DIR}/exefs.nsp)
     set_target_properties(${target} PROPERTIES LINK_FLAGS "-specs=${LIBNX}/switch.specs")
 endfunction()
 

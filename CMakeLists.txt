@@ -22,7 +22,18 @@ find_package(LIBNX REQUIRED)
 ## Targets
 
 # First, we want to add the regular ELF target.
-add_executable(sys_imgui source/init.cpp source/ImguiService.cpp source/ImguiService.hpp source/main.cpp source/main.hpp)
+add_executable(
+        sys_imgui
+
+        source/init.cpp
+        source/ImguiService.cpp
+        source/ImguiService.hpp
+        source/App.cpp
+        source/App.hpp
+        source/logger.cpp
+        source/logger.hpp
+        source/toml.hpp
+)
 
 # Next, we need to set the required target properties
 # so CMake can detect the JSON configuration for the module.

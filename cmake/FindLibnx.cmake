@@ -32,7 +32,7 @@ find_path(LIBNX_INCLUDE_DIR switch.h
         PATHS ${LIBNX_PATHS}
         PATH_SUFFIXES include)
 
-find_library(LIBNX_LIBRARY NAMES libnx.a
+find_library(LIBNX_LIBRARY NAMES libnxd.a
         PATHS ${LIBNX_PATHS}
         PATH_SUFFIXES lib)
 
