@@ -34,22 +34,29 @@ void* App::readFile(const char* filename) {
 }
 
 void App::loadShader(dk::Shader &shader, const char* filename) {
-
+    log("loading shader at %s\n", filename);
     // Open the file, and retrieve its size
     FILE* f = fopen(filename, "rb");
+    if (!f) {
+        abortWithLogResult(0, "Come on...\n");
+        return;
+    }
     fseek(f, 0, SEEK_END);
     uint32_t size = ftell(f);
-    rewind(f);
+    fseek(f, 0, SEEK_SET);
+    log("size = %d\n", size);
 
     // Look for a spot in the code memory block for loading this shader. Note that
     // we are just using a simple incremental offset; this isn't a general purpose
     // allocation algorithm.
     uint32_t codeOffset = codeMemOffset;
     codeMemOffset += (size + DK_SHADER_CODE_ALIGNMENT - 1) & ~(DK_SHADER_CODE_ALIGNMENT - 1);
+    log("offset = %d\n");
 
     // Read the file into memory, and close the file
     fread((uint8_t*) codeMemBlock.getCpuAddr() + codeOffset, size, 1, f);
     fclose(f);
+    log("closed file\n");
 
     dk::ShaderMaker{codeMemBlock, codeOffset}
             .initialize(shader);
@@ -69,7 +76,7 @@ void App::init() {
     u32 framebufferSize = (framebufferLayout.getSize() + framebufferLayout.getAlignment() - 1) &
                           ~(framebufferLayout.getAlignment() - 1);
 
-    framebufferMemBlock = dk::MemBlockMaker{device, framebufferSize}
+    framebufferMemBlock = dk::MemBlockMaker{device, FB_NUM * framebufferSize}
             .setFlags(DkMemBlockFlags_GpuCached | DkMemBlockFlags_Image)
             .create();
     log("created framebufferMemBlock\n");
@@ -79,7 +86,7 @@ void App::init() {
         swapchainImages[i] = &framebuffers[i];
         framebuffers[i]
                 .initialize(framebufferLayout, framebufferMemBlock, i * framebufferSize);
-        log("created framebuffer image %d\n", i);
+        log("created framebuffer image i=%d mbsize=%d fbsize=%d offset %d\n", i, framebufferMemBlock.getSize(), framebufferSize, i * framebufferSize);
     }
 
     swapchain = dk::SwapchainMaker{device, (void*) window,
@@ -92,9 +99,9 @@ void App::init() {
             .create();
     log("created codeMemBlock\n");
 
-    loadShader(vertexShader, "sd:/switch/sys-imgui/shaders/vert.dksh");
+    loadShader(vertexShader, "sdmc:/switch/sys-imgui/shaders/vert.dksh");
     log("loaded vertex shader\n");
-    loadShader(fragmentShader, "sd:/switch/sys-imgui/shaders/frag.dksh");
+    loadShader(fragmentShader, "sdmc:/switch/sys-imgui/shaders/frag.dksh");
     log("loaded fragment shader\n");
 
     commandBufferMemBlock = dk::MemBlockMaker{device, CMDMEMSIZE}
@@ -141,7 +148,13 @@ void App::init() {
     startNs = armTicksToNs(svcGetSystemTick());
 }
 
-void App::run() {
+bool App::update() {
+    if (padGetButtonsDown(&pad) & HidNpadButton_Minus) return false;
+
+    return true;
+}
+
+void App::render() {
     int slot = renderQueue.acquireImage(swapchain);
     renderQueue.submitCommands(commandBoundFramebuffers[slot]);
     renderQueue.submitCommands(commandRender);

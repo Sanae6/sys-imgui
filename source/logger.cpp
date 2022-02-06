@@ -13,7 +13,7 @@
 static int sock = -1;
 
 #ifndef SERVER
-#define SERVER "64.201.219.20"
+#define SERVER "192.168.1.99"
 #endif
 
 Result redirectStdoutToLogServer() {
@@ -24,15 +24,15 @@ Result redirectStdoutToLogServer() {
             .sin_addr = {inet_addr(SERVER)},
     };
 
-    sock = socket(AF_INET, SOCK_STREAM, 0);
+    sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (!sock) {
-        return ret;
+        diagAbortWithResult(ret);
     }
 
     ret = connect(sock, (struct sockaddr*) &srv_addr, sizeof(srv_addr));
     if (ret != 0) {
         close(sock);
-        return -1;
+        diagAbortWithResult(ret);
     }
 
     static const char* lol = "text\n";
@@ -51,9 +51,19 @@ Result redirectStdoutToLogServer() {
 }
 
 void abortWithResult(Result res) {
-    printf("Aborted with result! rc=%d, module=%d, desc=%d\n", res, R_MODULE(res), R_DESCRIPTION(res));
-    fflush(stdout);
+    fprintf(stderr, "Aborted with result! rc=%d/0x%x, module=%d, desc=%d\n", res, res, R_MODULE(res),
+            R_DESCRIPTION(res));
+    fflush(stderr);
     svcBreak(res, R_MODULE(res), R_DESCRIPTION(res));
+}
+
+void abortWithLogResult(Result res, const char* text, ...) {
+    va_list args;
+    va_start(args, text);
+    vfprintf(stderr, text, args);
+    va_end(args);
+    fflush(stderr);
+    abortWithResult(res);
 }
 
 void log(const char* text, ...) {

@@ -10,7 +10,10 @@ class App {
 public:
     App(const ImguiService& service, NWindow* window, dk::Device device);
     ~App();
-    void run();
+    bool update();
+    void render();
+
+    PadState pad;
 private:
     void init();
     void loadShader(dk::Shader&, const char* filename);

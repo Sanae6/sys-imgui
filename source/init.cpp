@@ -9,7 +9,7 @@
 #include "App.hpp"
 
 // Size of the inner heap (adjust as necessary).
-#define INNER_HEAP_SIZE 0x80000
+#define INNER_HEAP_SIZE 0x1000000
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,6 +36,8 @@ static dk::Device device;
 static NWindow window;
 static ViDisplay display;
 static ViLayer layer;
+static ImguiService service;
+App app;
 
 // Service initialization.
 void __appInit(void) {
@@ -152,20 +154,35 @@ void __appInit(void) {
     log("too sexy\n");
 
 
+    __nx_applet_type = AppletType_LibraryApplet; // this workaround is the start of my villain arc
+
     device = dk::DeviceMaker{}
+            .setCbDebug([](void* userData, const char* context, DkResult result, const char* message) {
+                if (result != DkResult_Success)
+                    abortWithLogResult(result, "{yo mama} deko3d error (%d) in %s - %s\n", result, context, message);
+                else
+                    log("deko3d warning in %s: %s\n", context, message);
+            })
             .setFlags(DkDeviceFlags_OriginLowerLeft)
             .create();
+
+    __nx_applet_type = AppletType_None; // end of my villain arc
     log("created device\n");
+    service = ImguiService();
+    log("done init\n");
 }
 
 // Service deinitialization.
 void __appExit(void) {
     // Close extra services you added to __appInit here.
+    delete (&app);
+    smUnregisterService(service.getName());
+    svcCloseHandle(service.getHandle());
+
     nwindowClose(&window);
     viCloseLayer(&layer);
     viCloseDisplay(&display);
     viExit();
-    romfsExit();
     fsdevUnmountAll(); // Disable this if you don't want to use the SD card filesystem.
     fsExit(); // Disable this if you don't want to use the filesystem.
     smExit();
@@ -180,16 +197,21 @@ void __appExit(void) {
 // Main program entrypoint
 int main(int argc, char* argv[]) {
     log("hit main\n");
-    ImguiService service = ImguiService();
+    service = ImguiService();
     log("made imgui service\n");
 
-    App* app = new App(service, &window, device);
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+
+    new (&app) App(service, &window, device);
     log("initialized app\n");
+    if (padGetButtonsDown(&app.pad) & HidNpadButton_Plus)
+        return false;
 
-//    while (true) app->run();
-    delete app;
+    while (true) {
+        padUpdate(&app.pad);
+        if (!app.update()) break;
+        app.render();
+    }
 
-    smUnregisterService(service.getName());
-    svcCloseHandle(service.getHandle());
     return 0;
 }
