@@ -151,8 +151,9 @@ void App::init() {
 }
 
 bool App::update() {
-    log("btn = %ull\n", padGetButtons(&pad));
-    if (padGetButtons(&pad) & HidNpadButton_Minus) return false;
+    static int i = 0;
+    lognf("i = %d btn = %ull\n", i++, padGetButtons(&pad));
+    if (padGetButtons(&pad)) return false;
 
     return true;
 }

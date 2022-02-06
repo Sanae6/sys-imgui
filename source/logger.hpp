@@ -9,3 +9,4 @@ Result redirectStdoutToLogServer();
 void abortWithResult(Result res);
 void abortWithLogResult(Result res, const char* text, ...);
 void log(const char* text, ...);
+void lognf(const char* text, ...); // log with no flush

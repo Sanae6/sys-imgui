@@ -3,8 +3,8 @@
 #include "ImguiService.hpp"
 #include <deko3d.hpp>
 
-#define FB_WIDTH  320
-#define FB_HEIGHT 180
+#define FB_WIDTH  1280
+#define FB_HEIGHT 720
 
 class App {
 public:

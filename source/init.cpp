@@ -9,7 +9,7 @@
 #include "App.hpp"
 
 // Size of the inner heap (adjust as necessary).
-#define INNER_HEAP_SIZE 0x1000000
+#define INNER_HEAP_SIZE 0x4000000
 
 #ifdef __cplusplus
 extern "C" {
@@ -119,15 +119,16 @@ void __appInit(void) {
     R_ASSERT_LOG(viCreateManagedLayer(&display, static_cast<ViLayerFlags>(0), 0, &__nx_vi_layer_id), "Something managed layer")
     R_ASSERT_LOG(viCreateLayer(&display, &layer), "Created layer") // todo make layers whenever i want for external windows?
     R_ASSERT_LOG(viSetLayerScalingMode(&layer, ViScalingMode_FitToLayer), "Set scaling mode")
-    R_ASSERT_LOG(viSetLayerSize(&layer, FB_WIDTH, FB_HEIGHT), "Set layer size")
-    if (s32 layerZ = 0; R_SUCCEEDED(viGetZOrderCountMax(&display, &layerZ)) && layerZ > 0)
-        R_ASSERT_LOG(viSetLayerZ(&layer, layerZ), "Set layer z");
+//    R_ASSERT_LOG(viSetLayerSize(&layer, FB_WIDTH, FB_HEIGHT), "Set layer size")
+//    if (s32 layerZ = 0; R_SUCCEEDED(viGetZOrderCountMax(&display, &layerZ)) && layerZ > 0)
+//        R_ASSERT_LOG(viSetLayerZ(&layer, layerZ), "Set layer z");
+
     R_ASSERT_LOG(nwindowCreateFromLayer(&window, &layer), "Created window")
 
     log("too sexy\n");
 
 
-    __nx_applet_type = AppletType_SystemApplet; // this workaround is the start of my villain arc
+    __nx_applet_type = AppletType_Application; // this workaround is the start of my villain arc
 
     device = dk::DeviceMaker{}
             .setCbDebug([](void* userData, const char* context, DkResult result, const char* message) {
@@ -174,14 +175,18 @@ void __appExit(void) {
 int main(int argc, char* argv[]) {
     log("hit main\n");
 
-    bool visible = false;
+    Event vsyncEvent;
+    viGetDisplayVsyncEvent(&display, &vsyncEvent);
 
     padUpdate(&app->pad);
-    while (true) {
+    while (appletMainLoop()) {
         padUpdate(&app->pad);
         if (!app->update())
-            return 0;
-        if (visible) app->render();
-    }
+            break;
+        app->render();
 
+        eventWait(&vsyncEvent, UINT64_MAX);
+    }
+    log("Exited.");
+    exit(0);
 }
