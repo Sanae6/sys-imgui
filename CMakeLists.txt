@@ -5,6 +5,8 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 23)
 set(IMGUI_STATIC true CACHE BOOL sa FORCE)
 
+add_compile_definitions(LOG_SERVER=${LOG_SERVER})
+
 # We have to add the cmake directory to have access to
 # the Switch tools and also find_package for libnx.
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
@@ -48,3 +50,10 @@ add_nsp_target(sys_imgui)
 
 add_shader_rule(sys_imgui_nsp shadersrc/vert.glsl vert)
 add_shader_rule(sys_imgui_nsp shadersrc/frag.glsl frag)
+
+#set(SD_OUT /atmosphere/contents/4202100000021123)
+#set(OUT ${CMAKE_CURRENT_BINARY_DIR}/)
+#add_custom_command(TARGET sys_imgui_nsp
+#        POST_BUILD
+#        COMMAND python3  ${CMAKE_CURRENT_BINARY_DIR}/exefs.nsp
+#)

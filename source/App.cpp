@@ -64,6 +64,8 @@ void App::loadShader(dk::Shader &shader, const char* filename) {
 
 void App::init() {
     log("App::init\n");
+    padInitializeAny(&pad);
+    log("pad initialized\n");
 
     dk::ImageLayout framebufferLayout;
     dk::ImageLayoutMaker{device}
@@ -149,7 +151,8 @@ void App::init() {
 }
 
 bool App::update() {
-    if (padGetButtonsDown(&pad) & HidNpadButton_Minus) return false;
+    log("btn = %ull\n", padGetButtons(&pad));
+    if (padGetButtons(&pad) & HidNpadButton_Minus) return false;
 
     return true;
 }

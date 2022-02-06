@@ -12,17 +12,26 @@
 
 static int sock = -1;
 
-#ifndef SERVER
-#define SERVER "192.168.1.99"
+#ifndef LOG_SERVER
+#error "Provide LOG_SERVER as a cmake definition (-DLOG_SERVER=ip)"
+#endif
+#ifndef LOG_PORT
+#define LOG_PORT 1984
 #endif
 
 Result redirectStdoutToLogServer() {
     int ret = -1;
+
+    // here comes the funny
+#define QUOTE(name) #name
+#define STR(macro) QUOTE(macro)
     struct sockaddr_in srv_addr{
             .sin_family = AF_INET,
-            .sin_port = htons(3080),
-            .sin_addr = {inet_addr(SERVER)},
+            .sin_port = htons(LOG_PORT),
+            .sin_addr = {inet_addr(STR(LOG_SERVER))},
     };
+#undef QUOTE
+#undef STR
 
     sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (!sock) {

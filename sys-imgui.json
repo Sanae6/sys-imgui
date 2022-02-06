@@ -6,12 +6,12 @@
   "main_thread_stack_size": "0x00004000",
   "main_thread_priority": 44,
   "default_cpu_id": 3,
+  "system_resource_size": 0,
   "process_category": 0,
   "is_retail": true,
   "pool_partition": 2,
   "is_64_bit": true,
   "address_space_type": 1,
-  "system_resource_size": 0,
   "disable_device_address_space_merge": false,
   "filesystem_access": {
     "permissions": "0xffffffffffffffff"

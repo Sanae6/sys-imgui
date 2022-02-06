@@ -15,6 +15,7 @@
 extern "C" {
 #endif
 
+u64 __nx_vi_layer_id;
 // Sysmodules should not use applet*.
 u32 __nx_applet_type = AppletType_None;
 
@@ -37,7 +38,7 @@ static NWindow window;
 static ViDisplay display;
 static ViLayer layer;
 static ImguiService service;
-App app;
+static App* app;
 
 // Service initialization.
 void __appInit(void) {
@@ -88,6 +89,7 @@ void __appInit(void) {
     }
     redirectStdoutToLogServer();
     log("Connected early\n");
+    R_ASSERT(hidsysInitialize())
 
     // Enable this if you want to use time.
     /*rc = timeInitialize();
@@ -111,50 +113,21 @@ void __appInit(void) {
 
 
     log("got to the good shit now\n");
-    log("\n");
 
-    rc = viInitialize(ViServiceType_Application);
-    u32 outRes = -1;
+    R_ASSERT_LOG(viInitialize(ViServiceType_Manager), "Initialized vi service")
+    R_ASSERT_LOG(viOpenDefaultDisplay(&display), "Opened display")
+    R_ASSERT_LOG(viCreateManagedLayer(&display, static_cast<ViLayerFlags>(0), 0, &__nx_vi_layer_id), "Something managed layer")
+    R_ASSERT_LOG(viCreateLayer(&display, &layer), "Created layer") // todo make layers whenever i want for external windows?
+    R_ASSERT_LOG(viSetLayerScalingMode(&layer, ViScalingMode_FitToLayer), "Set scaling mode")
+    R_ASSERT_LOG(viSetLayerSize(&layer, FB_WIDTH, FB_HEIGHT), "Set layer size")
+    if (s32 layerZ = 0; R_SUCCEEDED(viGetZOrderCountMax(&display, &layerZ)) && layerZ > 0)
+        R_ASSERT_LOG(viSetLayerZ(&layer, layerZ), "Set layer z");
+    R_ASSERT_LOG(nwindowCreateFromLayer(&window, &layer), "Created window")
 
-    if (R_SUCCEEDED(rc)) {
-        log("a\n");
-        rc = viOpenDefaultDisplay(&display);
-        if (R_SUCCEEDED(rc)) {
-            log("b\n");
-            rc = viCreateLayer(&display, &layer);
-            if (R_SUCCEEDED(rc)) {
-                log("c\n");
-                rc = viSetLayerScalingMode(&layer, ViScalingMode_FitToLayer);
-                if (R_SUCCEEDED(rc)) {
-                    log("d\n");
-                    rc = nwindowCreateFromLayer(&window, &layer);
-                    if (R_SUCCEEDED(rc)) {
-                        log("e\n");
-                        rc = nwindowSetDimensions(&window, FB_WIDTH, FB_HEIGHT);
-                        if (R_FAILED(rc))
-                            outRes = 0x420A;
-                        else log("f-\n");
-                    } else outRes = 0x4209;
-                    if (R_FAILED(rc)) {
-                        nwindowClose(&window);
-                    }
-                } else outRes = 0x4208;
-                if (R_FAILED(rc))
-                    viCloseLayer(&layer);
-            } else outRes = 0x4207;
-            if (R_FAILED(rc))
-                viCloseDisplay(&display);
-        } else outRes = 0x4206;
-        if (R_FAILED(rc))
-            viExit();
-    } else
-        outRes = 0x4205;
-    if (R_FAILED(rc))
-        diagAbortWithResult(outRes);
     log("too sexy\n");
 
 
-    __nx_applet_type = AppletType_LibraryApplet; // this workaround is the start of my villain arc
+    __nx_applet_type = AppletType_SystemApplet; // this workaround is the start of my villain arc
 
     device = dk::DeviceMaker{}
             .setCbDebug([](void* userData, const char* context, DkResult result, const char* message) {
@@ -166,18 +139,20 @@ void __appInit(void) {
             .setFlags(DkDeviceFlags_OriginLowerLeft)
             .create();
 
-    __nx_applet_type = AppletType_None; // end of my villain arc
+    __nx_applet_type = AppletType_None; // evil committed, i'm probably going to jail for life for doing this
+
     log("created device\n");
     service = ImguiService();
+    padConfigureInput(8, HidNpadStyleSet_NpadStandard | HidNpadStyleTag_NpadSystemExt);
+
+    app = new App(service, &window, device);
     log("done init\n");
 }
 
 // Service deinitialization.
 void __appExit(void) {
     // Close extra services you added to __appInit here.
-    delete (&app);
-    smUnregisterService(service.getName());
-    svcCloseHandle(service.getHandle());
+    delete app;
 
     nwindowClose(&window);
     viCloseLayer(&layer);
@@ -186,6 +161,7 @@ void __appExit(void) {
     fsdevUnmountAll(); // Disable this if you don't want to use the SD card filesystem.
     fsExit(); // Disable this if you don't want to use the filesystem.
     smExit();
+    hidsysExit();
     socketExit();
     hidExit(); // Enable this if you want to use HID.
 }
@@ -197,21 +173,15 @@ void __appExit(void) {
 // Main program entrypoint
 int main(int argc, char* argv[]) {
     log("hit main\n");
-    service = ImguiService();
-    log("made imgui service\n");
 
-    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+    bool visible = false;
 
-    new (&app) App(service, &window, device);
-    log("initialized app\n");
-    if (padGetButtonsDown(&app.pad) & HidNpadButton_Plus)
-        return false;
-
+    padUpdate(&app->pad);
     while (true) {
-        padUpdate(&app.pad);
-        if (!app.update()) break;
-        app.render();
+        padUpdate(&app->pad);
+        if (!app->update())
+            return 0;
+        if (visible) app->render();
     }
 
-    return 0;
 }
