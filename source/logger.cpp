@@ -13,7 +13,7 @@
 static int sock = -1;
 
 #ifndef LOG_SERVER
-#error "Provide LOG_SERVER as a cmake definition (-DLOG_SERVER=ip)"
+#error "Provide LOG_SERVER as a cmake definition or environment variable (-DLOG_SERVER=ip)"
 #endif
 #ifndef LOG_PORT
 #define LOG_PORT 1984
@@ -23,25 +23,25 @@ Result redirectStdoutToLogServer() {
     int ret = -1;
 
     // here comes the funny
-#define QUOTE(name) #name
-#define STR(macro) QUOTE(macro)
     struct sockaddr_in srv_addr{
             .sin_family = AF_INET,
             .sin_port = htons(LOG_PORT),
+#define QUOTE(name) #name
+#define STR(macro) QUOTE(macro)
             .sin_addr = {inet_addr(STR(LOG_SERVER))},
-    };
 #undef QUOTE
 #undef STR
+    };
 
     sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (!sock) {
-        diagAbortWithResult(ret);
+        abortWithoutLog(ret);
     }
 
     ret = connect(sock, (struct sockaddr*) &srv_addr, sizeof(srv_addr));
     if (ret != 0) {
         close(sock);
-        diagAbortWithResult(ret);
+        abortWithoutLog(ret);
     }
 
     static const char* lol = "text\n";
@@ -59,11 +59,15 @@ Result redirectStdoutToLogServer() {
     return R_OK;
 }
 
+inline void abortWithoutLog(Result res) {
+    svcBreak(res, R_MODULE(res), R_DESCRIPTION(res));
+}
+
 void abortWithResult(Result res) {
     fprintf(stderr, "Aborted with result! rc=%d/0x%x, module=%d, desc=%d\n", res, res, R_MODULE(res),
             R_DESCRIPTION(res));
     fflush(stderr);
-    svcBreak(res, R_MODULE(res), R_DESCRIPTION(res));
+    abortWithoutLog(res);
 }
 
 void abortWithLogResult(Result res, const char* text, ...) {

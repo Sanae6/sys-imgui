@@ -9,7 +9,7 @@
 #include "App.hpp"
 
 // Size of the inner heap (adjust as necessary).
-#define INNER_HEAP_SIZE 0x4000000
+#define INNER_HEAP_SIZE 0x2000000
 
 #ifdef __cplusplus
 extern "C" {

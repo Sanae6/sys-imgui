@@ -3,20 +3,25 @@
 #include "ImguiService.hpp"
 #include <deko3d.hpp>
 
-#define FB_WIDTH  1280
-#define FB_HEIGHT 720
+#define FB_WIDTH  640
+#define FB_HEIGHT 360
 
 class App {
 public:
-    App(const ImguiService& service, NWindow* window, dk::Device device);
+    App(const ImguiService &service, NWindow* window, dk::Device device);
+
     ~App();
+
     bool update();
+
     void render();
 
     PadState pad;
 private:
     void init();
-    void loadShader(dk::Shader&, const char* filename);
+
+    void loadShader(dk::Shader &, const char* filename);
+
     static void* readFile(const char* filename);
 
     u64 startNs;
@@ -41,5 +46,3 @@ private:
 
     dk::Queue renderQueue;
 };
-
-void actualMain(const ImguiService& service, NWindow* window, dk::Device device);
